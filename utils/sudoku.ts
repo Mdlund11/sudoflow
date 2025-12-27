@@ -11,7 +11,7 @@ const DIFFICULTY_LEVELS: Record<Difficulty, number> = {
   Expert: 4,
 };
 
-export const generateSudoku = (difficulty: Difficulty): Board => {
+export const generateSudoku = (difficulty: Difficulty): { puzzle: Board, solution: Board } => {
   let attempts = 0;
   // Safety break to avoid infinite loops
   while (attempts < 200) {
@@ -53,7 +53,7 @@ export const generateSudoku = (difficulty: Difficulty): Board => {
     const ratedDifficulty = rateDifficulty(puzzle);
 
     if (ratedDifficulty === difficulty) {
-      return puzzle;
+      return { puzzle, solution: solvedBoard };
     }
 
     attempts++;

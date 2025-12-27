@@ -4,7 +4,7 @@ import { generateSudoku } from './utils/sudoku';
 const benchmark = (difficulty: 'Hard' | 'Expert') => {
     console.log(`Generating ${difficulty} puzzle...`);
     const start = Date.now();
-    const puzzle = generateSudoku(difficulty);
+    const { puzzle } = generateSudoku(difficulty);
     const end = Date.now();
     console.log(`Generated ${difficulty} puzzle in ${end - start}ms`);
 };

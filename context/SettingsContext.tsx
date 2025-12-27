@@ -12,6 +12,10 @@ interface SettingsContextType {
     toggleCompletionAnimations: () => void;
     streakTrackingEnabled: boolean;
     toggleStreakTracking: () => void;
+    mistakeLimitEnabled: boolean;
+    toggleMistakeLimit: () => void;
+    maxMistakes: number;
+    setMaxMistakes: (value: number) => void;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -22,6 +26,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const [hideSolvedNumbers, setHideSolvedNumbers] = useState(true);
     const [completionAnimationsEnabled, setCompletionAnimationsEnabled] = useState(true);
     const [streakTrackingEnabled, setStreakTrackingEnabled] = useState(true);
+    const [mistakeLimitEnabled, setMistakeLimitEnabled] = useState(true);
+    const [maxMistakes, setMaxMistakesState] = useState(3);
 
     useEffect(() => {
         loadSettings();
@@ -48,6 +54,14 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             const savedStreakTracking = await AsyncStorage.getItem('settings_streakTrackingEnabled');
             if (savedStreakTracking !== null) {
                 setStreakTrackingEnabled(JSON.parse(savedStreakTracking));
+            }
+            const savedMistakeLimit = await AsyncStorage.getItem('settings_mistakeLimitEnabled');
+            if (savedMistakeLimit !== null) {
+                setMistakeLimitEnabled(JSON.parse(savedMistakeLimit));
+            }
+            const savedMaxMistakes = await AsyncStorage.getItem('settings_maxMistakes');
+            if (savedMaxMistakes !== null) {
+                setMaxMistakesState(JSON.parse(savedMaxMistakes));
             }
         } catch (e) {
             console.error('Failed to load settings', e);
@@ -104,6 +118,25 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
     };
 
+    const toggleMistakeLimit = async () => {
+        try {
+            const newValue = !mistakeLimitEnabled;
+            setMistakeLimitEnabled(newValue);
+            await AsyncStorage.setItem('settings_mistakeLimitEnabled', JSON.stringify(newValue));
+        } catch (e) {
+            console.error('Failed to save settings', e);
+        }
+    };
+
+    const setMaxMistakes = async (value: number) => {
+        try {
+            setMaxMistakesState(value);
+            await AsyncStorage.setItem('settings_maxMistakes', JSON.stringify(value));
+        } catch (e) {
+            console.error('Failed to save settings', e);
+        }
+    };
+
     return (
         <SettingsContext.Provider value={{
             highlightEnabled,
@@ -115,7 +148,11 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             completionAnimationsEnabled,
             toggleCompletionAnimations,
             streakTrackingEnabled,
-            toggleStreakTracking
+            toggleStreakTracking,
+            mistakeLimitEnabled,
+            toggleMistakeLimit,
+            maxMistakes,
+            setMaxMistakes
         }}>
             {children}
         </SettingsContext.Provider>

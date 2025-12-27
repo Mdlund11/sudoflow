@@ -1,8 +1,9 @@
 import { RADIUS, SHADOWS, SPACING } from '@/constants/theme';
 import { useSettings } from '@/context/SettingsContext';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
-import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 
 export default function SettingsScreen() {
     const {
@@ -15,7 +16,11 @@ export default function SettingsScreen() {
         completionAnimationsEnabled,
         toggleCompletionAnimations,
         streakTrackingEnabled,
-        toggleStreakTracking
+        toggleStreakTracking,
+        mistakeLimitEnabled,
+        toggleMistakeLimit,
+        maxMistakes,
+        setMaxMistakes
     } = useSettings();
 
     const backgroundColor = useThemeColor({}, 'background');
@@ -116,6 +121,52 @@ export default function SettingsScreen() {
                         />
                     </View>
                 </View>
+
+                <View style={[styles.section, { backgroundColor: surfaceColor }]}>
+                    <Text style={[styles.sectionTitle, { color: primaryColor }]}>Difficulty & Limits</Text>
+                    <View style={styles.row}>
+                        <View style={styles.rowTextContainer}>
+                            <Text style={[styles.rowTitle, { color: textColor }]}>Mistake Limit</Text>
+                            <Text style={[styles.rowSubtitle, { color: textSecondaryColor }]}>
+                                Limit the number of mistakes allowed per game
+                            </Text>
+                        </View>
+                        <Switch
+                            value={mistakeLimitEnabled}
+                            onValueChange={toggleMistakeLimit}
+                            trackColor={{ false: textSecondaryColor, true: primaryColor }}
+                            thumbColor={surfaceColor}
+                            ios_backgroundColor={textSecondaryColor}
+                            {...{ activeTrackColor: primaryColor, activeThumbColor: surfaceColor }} // Web specific props
+                            style={{ accentColor: primaryColor } as any}
+                        />
+                    </View>
+                    {mistakeLimitEnabled && (
+                        <View style={[styles.row, { marginTop: SPACING.m }]}>
+                            <View style={styles.rowTextContainer}>
+                                <Text style={[styles.rowTitle, { color: textColor }]}>Maximum Mistakes</Text>
+                                <Text style={[styles.rowSubtitle, { color: textSecondaryColor }]}>
+                                    Game ends after {maxMistakes} mistakes
+                                </Text>
+                            </View>
+                            <View style={styles.stepperContainer}>
+                                <TouchableOpacity
+                                    onPress={() => setMaxMistakes(Math.max(1, maxMistakes - 1))}
+                                    style={[styles.stepperButton, { borderColor: primaryColor }]}
+                                >
+                                    <MaterialCommunityIcons name="minus" size={20} color={primaryColor} />
+                                </TouchableOpacity>
+                                <Text style={[styles.stepperValue, { color: textColor }]}>{maxMistakes}</Text>
+                                <TouchableOpacity
+                                    onPress={() => setMaxMistakes(Math.min(10, maxMistakes + 1))}
+                                    style={[styles.stepperButton, { borderColor: primaryColor }]}
+                                >
+                                    <MaterialCommunityIcons name="plus" size={20} color={primaryColor} />
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    )}
+                </View>
             </ScrollView>
         </View>
     );
@@ -157,5 +208,24 @@ const styles = StyleSheet.create({
     },
     rowSubtitle: {
         fontSize: 12,
+    },
+    stepperContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: SPACING.m,
+    },
+    stepperButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        borderWidth: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    stepperValue: {
+        fontSize: 18,
+        fontWeight: '600',
+        minWidth: 24,
+        textAlign: 'center',
     },
 });

@@ -3,7 +3,7 @@ import { useStats } from '@/context/StatsContext';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 export default function StatisticsScreen() {
     const { stats, resetStats } = useStats();
@@ -16,16 +16,6 @@ export default function StatisticsScreen() {
     const borderColor = useThemeColor({}, 'border');
     const errorColor = useThemeColor({}, 'error');
 
-    const handleReset = () => {
-        Alert.alert(
-            'Reset Statistics',
-            'Are you sure you want to reset all your statistics and streaks? This action cannot be undone.',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Reset', style: 'destructive', onPress: resetStats },
-            ]
-        );
-    };
 
     const difficultyStats = [
         { label: 'Easy', count: stats.completedGames.Easy, color: '#10B981' },
@@ -42,7 +32,7 @@ export default function StatisticsScreen() {
                     <View style={[styles.streakCard, { backgroundColor: surfaceColor }]}>
                         <MaterialCommunityIcons name="fire" size={48} color="#FF9800" />
                         <Text style={[styles.streakValue, { color: textColor }]}>{stats.currentStreak}</Text>
-                        <Text style={[styles.streakLabel, { color: textSecondaryColor }]}>Current Streak</Text>
+                        <Text style={[styles.streakLabel, { color: textSecondaryColor }]}>Win Streak</Text>
                     </View>
                     <View style={[styles.streakCard, { backgroundColor: surfaceColor }]}>
                         <MaterialCommunityIcons name="trophy" size={48} color="#FFD700" />
@@ -70,10 +60,6 @@ export default function StatisticsScreen() {
                     </View>
                 </View>
 
-                <TouchableOpacity style={styles.resetButton} onPress={handleReset}>
-                    <MaterialCommunityIcons name="refresh" size={20} color={errorColor} />
-                    <Text style={[styles.resetButtonText, { color: errorColor }]}>Reset Statistics</Text>
-                </TouchableOpacity>
             </ScrollView>
         </View>
     );
@@ -159,17 +145,5 @@ const styles = StyleSheet.create({
     totalValue: {
         fontSize: 24,
         fontWeight: '700',
-    },
-    resetButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: SPACING.xl,
-        padding: SPACING.m,
-    },
-    resetButtonText: {
-        fontSize: 16,
-        fontWeight: '600',
-        marginLeft: SPACING.s,
     },
 });

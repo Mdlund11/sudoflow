@@ -3,7 +3,6 @@ import { Image, Platform, Text, View } from 'react-native';
 
 import { HamburgerMenu } from '@/components/HamburgerMenu';
 import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useThemeColor } from '@/hooks/use-theme-color';
@@ -61,30 +60,6 @@ export default function TabLayout() {
                     headerShown: true,
                     tabBarIcon: () => <Image source={require('@/assets/images/icon.png')} style={{ width: 32, height: 32 }} />,
                     headerLeft: () => <HamburgerMenu />,
-                }}
-            />
-            <Tabs.Screen
-                name="statistics"
-                options={{
-                    title: 'Stats',
-                    headerShown: true,
-                    headerTitle: 'Statistics',
-                    headerTitleAlign: 'center',
-                    headerStyle: { backgroundColor: surfaceColor },
-                    headerTintColor: primaryColor,
-                    tabBarIcon: ({ color }) => <IconSymbol name="chart.bar.fill" size={24} color={color} />,
-                }}
-            />
-            <Tabs.Screen
-                name="new-game"
-                options={{
-                    title: 'New Game',
-                    headerShown: true,
-                    headerTitle: 'New Game',
-                    headerTitleAlign: 'center',
-                    headerStyle: { backgroundColor: surfaceColor },
-                    headerTintColor: primaryColor,
-                    tabBarIcon: ({ color }) => <IconSymbol name="plus.circle.fill" size={24} color={color} />,
                 }}
             />
         </Tabs>

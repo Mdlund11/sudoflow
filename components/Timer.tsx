@@ -1,31 +1,38 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { AppState, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useThemeColor } from '../hooks/use-theme-color';
 import { loadTimer, saveTimer } from '../utils/storage';
 import { formatTime } from '../utils/timeUtils';
 
-interface TimerProps {
-  isSolved?: boolean;
-  onComplete?: (finalTime: number) => void;
+export interface TimerRef {
+  getTime: () => number;
 }
 
-const Timer: React.FC<TimerProps> = ({ isSolved, onComplete }) => {
+interface TimerProps {
+  isSolved?: boolean;
+  isFailed?: boolean;
+}
+
+const Timer = forwardRef<TimerRef, TimerProps>(({ isSolved, isFailed }, ref) => {
   const [time, setTime] = useState(0);
   const [isRunning, setIsRunning] = useState(true);
   const [appState, setAppState] = useState(AppState.currentState);
   const textColor = useThemeColor({}, 'text');
 
+  useImperativeHandle(ref, () => ({
+    getTime: () => time
+  }));
+
   useEffect(() => {
-    if (isSolved) {
+    if (isSolved || isFailed) {
       setIsRunning(false);
-      onComplete?.(time);
     }
-  }, [isSolved]);
+  }, [isSolved, isFailed]);
 
   useEffect(() => {
     const handleAppStateChange = (nextAppState: any) => {
-      if (appState.match(/inactive|background/) && nextAppState === 'active' && !isSolved) {
+      if (appState.match(/inactive|background/) && nextAppState === 'active' && !isSolved && !isFailed) {
         setIsRunning(true);
       } else {
         setIsRunning(false);
@@ -38,12 +45,12 @@ const Timer: React.FC<TimerProps> = ({ isSolved, onComplete }) => {
     return () => {
       subscription.remove();
     };
-  }, [appState, isSolved]);
+  }, [appState, isSolved, isFailed]);
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
 
-    if (isRunning && !isSolved) {
+    if (isRunning && !isSolved && !isFailed) {
       interval = setInterval(() => {
         setTime(prevTime => prevTime + 1);
       }, 1000);
@@ -54,7 +61,7 @@ const Timer: React.FC<TimerProps> = ({ isSolved, onComplete }) => {
         clearInterval(interval);
       }
     };
-  }, [isRunning, isSolved]);
+  }, [isRunning, isSolved, isFailed]);
 
   useEffect(() => {
     const saveCurrentTime = async () => {
@@ -76,7 +83,7 @@ const Timer: React.FC<TimerProps> = ({ isSolved, onComplete }) => {
   }, []);
 
   const handlePause = () => {
-    if (!isSolved) {
+    if (!isSolved && !isFailed) {
       setIsRunning(!isRunning);
     }
   };
@@ -84,12 +91,12 @@ const Timer: React.FC<TimerProps> = ({ isSolved, onComplete }) => {
   return (
     <View style={styles.container}>
       <Text style={[styles.timerText, { color: textColor }]}>{formatTime(time)}</Text>
-      <TouchableOpacity onPress={handlePause} style={[styles.iconButton, isSolved && { opacity: 0.5 }]} disabled={isSolved}>
+      <TouchableOpacity onPress={handlePause} style={[styles.iconButton, (isSolved || isFailed) && { opacity: 0.5 }]} disabled={isSolved || isFailed}>
         <MaterialCommunityIcons name={isRunning ? "pause" : "play"} size={20} color={textColor} />
       </TouchableOpacity>
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {

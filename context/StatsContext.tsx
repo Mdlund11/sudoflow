@@ -11,12 +11,13 @@ export interface GameStats {
     };
     currentStreak: number;
     longestStreak: number;
-    lastCompletedDate: string | null; // YYYY-MM-DD
+    lastCompletedDate: string | null; // Keep for possible future use, though not used for win streak
 }
 
 interface StatsContextType {
     stats: GameStats;
     recordGameCompletion: (difficulty: 'Easy' | 'Medium' | 'Hard' | 'Expert') => Promise<{ totalGames: number; currentStreak: number }>;
+    recordGameFailure: () => Promise<void>;
     resetStats: () => Promise<void>;
 }
 
@@ -47,39 +48,11 @@ export const StatsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             const savedStats = await AsyncStorage.getItem('sudoku_stats');
             if (savedStats) {
                 const parsedStats = JSON.parse(savedStats);
-                // Validate streak at startup
-                const validatedStats = validateStreak(parsedStats);
-                setStats(validatedStats);
-                if (JSON.stringify(validatedStats) !== savedStats) {
-                    await AsyncStorage.setItem('sudoku_stats', JSON.stringify(validatedStats));
-                }
+                setStats(parsedStats);
             }
         } catch (e) {
             console.error('Failed to load stats', e);
         }
-    };
-
-    const validateStreak = (currentStats: GameStats): GameStats => {
-        if (!currentStats.lastCompletedDate) return currentStats;
-
-        const today = new Date().toISOString().split('T')[0];
-        const lastDate = currentStats.lastCompletedDate;
-
-        if (today === lastDate) return currentStats;
-
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toISOString().split('T')[0];
-
-        if (lastDate !== yesterdayStr) {
-            // Streak broken
-            return {
-                ...currentStats,
-                currentStreak: 0,
-            };
-        }
-
-        return currentStats;
     };
 
     const recordGameCompletion = async (difficulty: 'Easy' | 'Medium' | 'Hard' | 'Expert') => {
@@ -90,28 +63,9 @@ export const StatsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             // Increment difficulty count
             newStats.completedGames[difficulty]++;
 
-            // Handle streak
+            // Handle win streak
             if (streakTrackingEnabled) {
-                const lastDate = newStats.lastCompletedDate;
-
-                if (lastDate === null) {
-                    // First game ever
-                    newStats.currentStreak = 1;
-                } else if (lastDate === today) {
-                    // Already played today, streak stays the same
-                } else {
-                    const yesterday = new Date();
-                    yesterday.setDate(yesterday.getDate() - 1);
-                    const yesterdayStr = yesterday.toISOString().split('T')[0];
-
-                    if (lastDate === yesterdayStr) {
-                        // Consecutive day
-                        newStats.currentStreak++;
-                    } else {
-                        // Streak was broken, start new one
-                        newStats.currentStreak = 1;
-                    }
-                }
+                newStats.currentStreak++;
 
                 if (newStats.currentStreak > newStats.longestStreak) {
                     newStats.longestStreak = newStats.currentStreak;
@@ -130,6 +84,18 @@ export const StatsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
     };
 
+    const recordGameFailure = async () => {
+        try {
+            if (!streakTrackingEnabled) return;
+
+            const newStats = { ...stats, currentStreak: 0 };
+            setStats(newStats);
+            await AsyncStorage.setItem('sudoku_stats', JSON.stringify(newStats));
+        } catch (e) {
+            console.error('Failed to record game failure', e);
+        }
+    };
+
     const resetStats = async () => {
         try {
             setStats(INITIAL_STATS);
@@ -140,7 +106,7 @@ export const StatsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     return (
-        <StatsContext.Provider value={{ stats, recordGameCompletion, resetStats }}>
+        <StatsContext.Provider value={{ stats, recordGameCompletion, recordGameFailure, resetStats }}>
             {children}
         </StatsContext.Provider>
     );

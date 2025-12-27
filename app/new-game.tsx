@@ -19,18 +19,22 @@ export default function NewGameScreen() {
         // Allow UI to update before heavy generation
         setTimeout(async () => {
             try {
-                const newBoard = generateSudoku(difficulty);
+                const { puzzle: newBoard, solution } = generateSudoku(difficulty);
+
                 const newInitialBoard = newBoard.map(row => row.map(cell => cell !== 0));
 
                 await saveBoard({
                     board: newBoard,
                     initialBoard: newInitialBoard,
-                    difficulty
+                    difficulty,
+                    solution,
+                    mistakes: 0,
+                    isFailed: false
                 });
                 await saveTimer(0);
 
                 // Navigate back to the home/play tab
-                router.dismissAll();
+                router.replace('/');
             } catch (error) {
                 console.error('Failed to generate game:', error);
                 setIsGenerating(false);

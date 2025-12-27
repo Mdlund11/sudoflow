@@ -19,7 +19,7 @@ import { useThemeColor } from '../hooks/use-theme-color';
 SplashScreen.preventAutoHideAsync();
 
 export const unstable_settings = {
-  anchor: 'index',
+  anchor: '(tabs)',
 };
 
 export default function RootLayout() {
