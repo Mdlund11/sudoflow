@@ -651,12 +651,13 @@ export const getHint = (board: Board, solution: Board, selectedCell: { row: numb
   for (let i = 0; i < 9; i++) {
     for (let j = 0; j < 9; j++) {
       if (board[i][j] === 0) {
+        const val = solution[i][j];
         return {
           row: i,
           col: j,
-          val: solution[i][j],
+          val,
           technique: 'Grandmaster Insight',
-          explanation: `This puzzle reaches a level of complexity beyond standard advanced patterns (like X-Wings or Y-Wings). This insight provides a correct move in cell (${i + 1}, ${j + 1}) to help you progress through this Grandmaster-level challenge.`,
+          explanation: `This puzzle reaches a level of complexity beyond standard advanced patterns (like X-Wings or Y-Wings). This insight reveals that cell (${i + 1}, ${j + 1}) must be ${val} to help you progress through this Grandmaster-level challenge.`,
           contributingCells: []
         };
       }
