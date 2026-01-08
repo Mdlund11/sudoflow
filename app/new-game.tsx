@@ -46,7 +46,7 @@ export default function NewGameScreen() {
         <View style={[styles.container, { backgroundColor }]}>
             <Text style={[styles.title, { color: textColor }]}>Choose Difficulty</Text>
             <View style={styles.buttonContainer}>
-                {(['Easy', 'Medium', 'Hard', 'Expert'] as Difficulty[]).map((diff) => (
+                {(['Easy', 'Medium', 'Hard', 'Expert', 'Grandmaster'] as Difficulty[]).map((diff) => (
                     <TouchableOpacity
                         key={diff}
                         style={[styles.button, { backgroundColor: primaryColor }, isGenerating && styles.buttonDisabled]}

@@ -32,12 +32,12 @@ export default function StatisticsScreen() {
                     <View style={[styles.streakCard, { backgroundColor: surfaceColor }]}>
                         <MaterialCommunityIcons name="fire" size={48} color="#FF9800" />
                         <Text style={[styles.streakValue, { color: textColor }]}>{stats.currentStreak}</Text>
-                        <Text style={[styles.streakLabel, { color: textSecondaryColor }]}>Win Streak</Text>
+                        <Text style={[styles.streakLabel, { color: textSecondaryColor }]} numberOfLines={1} adjustsFontSizeToFit>Win Streak</Text>
                     </View>
                     <View style={[styles.streakCard, { backgroundColor: surfaceColor }]}>
                         <MaterialCommunityIcons name="trophy" size={48} color="#FFD700" />
                         <Text style={[styles.streakValue, { color: textColor }]}>{stats.longestStreak}</Text>
-                        <Text style={[styles.streakLabel, { color: textSecondaryColor }]}>Longest Streak</Text>
+                        <Text style={[styles.streakLabel, { color: textSecondaryColor }]} numberOfLines={1} adjustsFontSizeToFit>Longest Streak</Text>
                     </View>
                 </View>
 
@@ -90,9 +90,9 @@ const styles = StyleSheet.create({
         marginVertical: SPACING.xs,
     },
     streakLabel: {
-        fontSize: 12,
+        fontSize: 10,
         textTransform: 'uppercase',
-        letterSpacing: 1,
+        letterSpacing: 0.5,
     },
     section: {
         borderRadius: RADIUS.m,

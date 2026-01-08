@@ -10,7 +10,7 @@ import { useSettings } from '../context/SettingsContext';
 import { useStats } from '../context/StatsContext';
 import { useThemeColor } from '../hooks/use-theme-color';
 import { loadBoard, saveBoard, saveTimer } from '../utils/storage';
-import { checkSolution, findConflicts, generateSudoku } from '../utils/sudoku';
+import { checkSolution, findConflicts, generateSudoku, getHint, Hint } from '../utils/sudoku';
 import { formatTime } from '../utils/timeUtils';
 import Cell from './Cell';
 import Timer, { TimerRef } from './Timer';
@@ -30,10 +30,12 @@ const SudokuBoard: React.FC = () => {
   const [gameId, setGameId] = useState<number>(0);
   const router = useRouter();
 
-  const { highlightEnabled, autoRemoveNotes, hideSolvedNumbers, completionAnimationsEnabled, streakTrackingEnabled, mistakeLimitEnabled, maxMistakes } = useSettings();
+  const { highlightEnabled, autoRemoveNotes, hideSolvedNumbers, completionAnimationsEnabled, streakTrackingEnabled, mistakeLimitEnabled, maxMistakes, solutionCheckingEnabled } = useSettings();
   const { recordGameCompletion, recordGameFailure } = useStats();
   const [history, setHistory] = useState<{ board: number[][]; notes: number[][][] }[]>([]);
   const [hasShownEndGameAlert, setHasShownEndGameAlert] = useState<boolean>(false);
+  const [isHintMode, setIsHintMode] = useState<boolean>(false);
+  const [currentHint, setCurrentHint] = useState<Hint | null>(null);
 
   // Animation state: simple trigger ID and map of delays for the wave
   const [animationState, setAnimationState] = useState<{
@@ -204,8 +206,12 @@ const SudokuBoard: React.FC = () => {
     let newMistakes = mistakes;
     let newIsFailed = isFailed;
 
-    if (value !== 0 && solution.length > 0) {
-      if (solution[row][col] !== value) {
+    if (value !== 0) {
+      const isMistake = solutionCheckingEnabled
+        ? (solution.length > 0 && solution[row][col] !== value)
+        : conflicts.some(c => c.row === row && c.col === col);
+
+      if (isMistake) {
         newMistakes += 1;
         setMistakes(newMistakes);
 
@@ -238,6 +244,12 @@ const SudokuBoard: React.FC = () => {
     setBoard(newBoard);
     setNotes(newNotes);
     setConflictCells(conflicts);
+
+    // Deactivate hint mode when a number is entered
+    if (isHintMode) {
+      setIsHintMode(false);
+      setCurrentHint(null);
+    }
 
     if (value !== 0 && conflicts.length === 0 && checkSolution(newBoard)) {
       setIsSolved(true);
@@ -291,6 +303,12 @@ const SudokuBoard: React.FC = () => {
 
   const handleSelectCell = (row: number, col: number) => {
     setSelectedCell({ row, col });
+    // If selecting a different cell while in hint mode, maybe stay in hint mode but find a new hint?
+    // User spec says: "The user can exit Hint Mode by ... selecting a different cell"
+    if (isHintMode) {
+      setIsHintMode(false);
+      setCurrentHint(null);
+    }
   };
 
   const handleNumberPress = (num: number) => {
@@ -311,6 +329,26 @@ const SudokuBoard: React.FC = () => {
 
   const toggleNoteMode = () => {
     setIsNoteMode(!isNoteMode);
+    if (isHintMode) {
+      setIsHintMode(false);
+      setCurrentHint(null);
+    }
+  };
+
+  const handleHintPress = () => {
+    if (isHintMode) {
+      setIsHintMode(false);
+      setCurrentHint(null);
+    } else {
+      const hint = getHint(board, solution, selectedCell);
+      if (hint) {
+        setIsHintMode(true);
+        setCurrentHint(hint);
+        setSelectedCell({ row: hint.row, col: hint.col });
+      } else {
+        Alert.alert('No Hints Available', 'I couldn\'t find any logical moves right now. Keep trying!');
+      }
+    }
   };
 
   if (board.length === 0) return null;
@@ -339,6 +377,8 @@ const SudokuBoard: React.FC = () => {
             const rowIndex = Math.floor(index / 9);
             const colIndex = index % 9;
             const isConflict = conflictCells.some(c => c.row === rowIndex && c.col === colIndex);
+            const isSolutionMismatch = solutionCheckingEnabled && board[rowIndex][colIndex] !== 0 && solution.length > 0 && board[rowIndex][colIndex] !== solution[rowIndex][colIndex];
+            const isError = isConflict || isSolutionMismatch;
 
             const cellKey = `${rowIndex},${colIndex}`;
             const animationDelay = animationState.delays[cellKey];
@@ -361,6 +401,9 @@ const SudokuBoard: React.FC = () => {
               isHighlightNumber = selectedValue !== 0 && cell === selectedValue;
             }
 
+            const isTargetHint = isHintMode && currentHint?.row === rowIndex && currentHint?.col === colIndex;
+            const isContributingHint = isHintMode && currentHint?.contributingCells.some(c => c.row === rowIndex && c.col === colIndex);
+
             return (
               <Cell
                 key={index}
@@ -372,17 +415,29 @@ const SudokuBoard: React.FC = () => {
                 onPress={() => !isFailed && !isSolved && handleSelectCell(rowIndex, colIndex)}
                 size={cellSize}
                 isInitial={initialBoard[rowIndex]?.[colIndex]}
-                isConflict={isConflict}
+                isConflict={isError}
                 isHighlightRow={isHighlightRow}
                 isHighlightCol={isHighlightCol}
                 isHighlightBlock={isHighlightBlock}
                 isHighlightNumber={isHighlightNumber}
+                isTargetHint={isTargetHint}
+                isContributingHint={isContributingHint}
                 animationTrigger={animationDelay !== undefined ? animationState.id : undefined}
                 animationDelay={animationDelay}
               />
             );
           })}
         </View>
+
+        {isHintMode && currentHint && (
+          <View style={[styles.hintContainer, { backgroundColor: surfaceColor, borderColor: primaryColor }]}>
+            <View style={styles.hintHeader}>
+              <MaterialCommunityIcons name="lightbulb-outline" size={20} color={primaryColor} />
+              <Text style={[styles.hintTechnique, { color: primaryColor }]}>{currentHint.technique}</Text>
+            </View>
+            <Text style={[styles.hintExplanation, { color: textColor }]}>{currentHint.explanation}</Text>
+          </View>
+        )}
 
         <View style={styles.controlsContainer}>
           <View style={styles.toolsRow}>
@@ -426,6 +481,21 @@ const SudokuBoard: React.FC = () => {
                 <MaterialCommunityIcons name="eraser" size={28} color={textColor} />
               </View>
               <Text style={[styles.toolButtonText, { color: textColor }]}>Clear</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.toolButton, (isFailed || isSolved) && { opacity: 0.5 }]}
+              onPress={handleHintPress}
+              disabled={isFailed || isSolved}
+            >
+              <View style={styles.iconWrapper}>
+                <MaterialCommunityIcons
+                  name={isHintMode ? "lightbulb" : "lightbulb-outline"}
+                  size={28}
+                  color={isHintMode ? primaryColor : textColor}
+                />
+              </View>
+              <Text style={[styles.toolButtonText, { color: isHintMode ? primaryColor : textColor }]}>Hint</Text>
             </TouchableOpacity>
           </View>
 
@@ -600,6 +670,29 @@ const styles = StyleSheet.create({
   actionButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  hintContainer: {
+    width: '90%',
+    marginTop: SPACING.m,
+    padding: SPACING.m,
+    borderRadius: RADIUS.m,
+    borderWidth: 1,
+    ...SHADOWS.small,
+  },
+  hintHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.s,
+    marginBottom: 4,
+  },
+  hintTechnique: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+  },
+  hintExplanation: {
+    fontSize: 14,
+    lineHeight: 20,
   },
 });
 

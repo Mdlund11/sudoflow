@@ -20,7 +20,9 @@ export default function SettingsScreen() {
         mistakeLimitEnabled,
         toggleMistakeLimit,
         maxMistakes,
-        setMaxMistakes
+        setMaxMistakes,
+        solutionCheckingEnabled,
+        toggleSolutionChecking
     } = useSettings();
 
     const backgroundColor = useThemeColor({}, 'background');
@@ -142,29 +144,48 @@ export default function SettingsScreen() {
                         />
                     </View>
                     {mistakeLimitEnabled && (
-                        <View style={[styles.row, { marginTop: SPACING.m }]}>
-                            <View style={styles.rowTextContainer}>
-                                <Text style={[styles.rowTitle, { color: textColor }]}>Maximum Mistakes</Text>
-                                <Text style={[styles.rowSubtitle, { color: textSecondaryColor }]}>
-                                    Game ends after {maxMistakes} mistakes
-                                </Text>
+                        <>
+                            <View style={[styles.row, { marginTop: SPACING.m }]}>
+                                <View style={styles.rowTextContainer}>
+                                    <Text style={[styles.rowTitle, { color: textColor }]}>Maximum Mistakes</Text>
+                                    <Text style={[styles.rowSubtitle, { color: textSecondaryColor }]}>
+                                        Game ends after {maxMistakes} mistakes
+                                    </Text>
+                                </View>
+                                <View style={styles.stepperContainer}>
+                                    <TouchableOpacity
+                                        onPress={() => setMaxMistakes(Math.max(1, maxMistakes - 1))}
+                                        style={[styles.stepperButton, { borderColor: primaryColor }]}
+                                    >
+                                        <MaterialCommunityIcons name="minus" size={20} color={primaryColor} />
+                                    </TouchableOpacity>
+                                    <Text style={[styles.stepperValue, { color: textColor }]}>{maxMistakes}</Text>
+                                    <TouchableOpacity
+                                        onPress={() => setMaxMistakes(Math.min(10, maxMistakes + 1))}
+                                        style={[styles.stepperButton, { borderColor: primaryColor }]}
+                                    >
+                                        <MaterialCommunityIcons name="plus" size={20} color={primaryColor} />
+                                    </TouchableOpacity>
+                                </View>
                             </View>
-                            <View style={styles.stepperContainer}>
-                                <TouchableOpacity
-                                    onPress={() => setMaxMistakes(Math.max(1, maxMistakes - 1))}
-                                    style={[styles.stepperButton, { borderColor: primaryColor }]}
-                                >
-                                    <MaterialCommunityIcons name="minus" size={20} color={primaryColor} />
-                                </TouchableOpacity>
-                                <Text style={[styles.stepperValue, { color: textColor }]}>{maxMistakes}</Text>
-                                <TouchableOpacity
-                                    onPress={() => setMaxMistakes(Math.min(10, maxMistakes + 1))}
-                                    style={[styles.stepperButton, { borderColor: primaryColor }]}
-                                >
-                                    <MaterialCommunityIcons name="plus" size={20} color={primaryColor} />
-                                </TouchableOpacity>
+                            <View style={[styles.row, { marginTop: SPACING.m }]}>
+                                <View style={styles.rowTextContainer}>
+                                    <Text style={[styles.rowTitle, { color: textColor }]}>Auto-Check Mistakes</Text>
+                                    <Text style={[styles.rowSubtitle, { color: textSecondaryColor }]}>
+                                        Mark moves as mistakes if they don't match the final solution
+                                    </Text>
+                                </View>
+                                <Switch
+                                    value={solutionCheckingEnabled}
+                                    onValueChange={toggleSolutionChecking}
+                                    trackColor={{ false: textSecondaryColor, true: primaryColor }}
+                                    thumbColor={surfaceColor}
+                                    ios_backgroundColor={textSecondaryColor}
+                                    {...{ activeTrackColor: primaryColor, activeThumbColor: surfaceColor }}
+                                    style={{ accentColor: primaryColor } as any}
+                                />
                             </View>
-                        </View>
+                        </>
                     )}
                 </View>
             </ScrollView>

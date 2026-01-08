@@ -19,6 +19,8 @@ interface CellProps {
   isHighlightNumber: boolean;
   animationTrigger?: number;
   animationDelay?: number;
+  isTargetHint?: boolean;
+  isContributingHint?: boolean;
 }
 
 const Cell: React.FC<CellProps> = ({
@@ -37,6 +39,8 @@ const Cell: React.FC<CellProps> = ({
   isHighlightNumber,
   animationTrigger,
   animationDelay,
+  isTargetHint,
+  isContributingHint,
 }) => {
   // Single animation value to keep everything in sync (0 to 1)
   const animProgress = useRef(new Animated.Value(0)).current;
@@ -51,6 +55,8 @@ const Cell: React.FC<CellProps> = ({
   const highlightColor = useThemeColor({}, 'highlight');
   const highlightStrongColor = useThemeColor({}, 'highlightStrong');
   const errorColor = useThemeColor({}, 'error');
+  const hintTargetColor = useThemeColor({}, 'hintTarget');
+  const hintContributingColor = useThemeColor({}, 'hintContributing');
 
   useEffect(() => {
     if (animationTrigger && animationDelay !== undefined) {
@@ -85,6 +91,8 @@ const Cell: React.FC<CellProps> = ({
   const borderBottomColor = (row + 1) % 3 === 0 && row !== 8 ? borderDarkColor : borderLightColor;
 
   const getBackgroundColor = () => {
+    if (isTargetHint) return hintTargetColor;
+    if (isContributingHint) return hintContributingColor;
     if (isConflict) return errorColor + '40';
     if (isSelected) return selectionColor;
     if (isHighlightNumber) return highlightStrongColor;

@@ -16,6 +16,8 @@ interface SettingsContextType {
     toggleMistakeLimit: () => void;
     maxMistakes: number;
     setMaxMistakes: (value: number) => void;
+    solutionCheckingEnabled: boolean;
+    toggleSolutionChecking: () => void;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -28,6 +30,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const [streakTrackingEnabled, setStreakTrackingEnabled] = useState(true);
     const [mistakeLimitEnabled, setMistakeLimitEnabled] = useState(true);
     const [maxMistakes, setMaxMistakesState] = useState(3);
+    const [solutionCheckingEnabled, setSolutionCheckingEnabled] = useState(true);
 
     useEffect(() => {
         loadSettings();
@@ -62,6 +65,10 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             const savedMaxMistakes = await AsyncStorage.getItem('settings_maxMistakes');
             if (savedMaxMistakes !== null) {
                 setMaxMistakesState(JSON.parse(savedMaxMistakes));
+            }
+            const savedSolutionChecking = await AsyncStorage.getItem('settings_solutionCheckingEnabled');
+            if (savedSolutionChecking !== null) {
+                setSolutionCheckingEnabled(JSON.parse(savedSolutionChecking));
             }
         } catch (e) {
             console.error('Failed to load settings', e);
@@ -137,6 +144,16 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
     };
 
+    const toggleSolutionChecking = async () => {
+        try {
+            const newValue = !solutionCheckingEnabled;
+            setSolutionCheckingEnabled(newValue);
+            await AsyncStorage.setItem('settings_solutionCheckingEnabled', JSON.stringify(newValue));
+        } catch (e) {
+            console.error('Failed to save settings', e);
+        }
+    };
+
     return (
         <SettingsContext.Provider value={{
             highlightEnabled,
@@ -152,7 +169,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             mistakeLimitEnabled,
             toggleMistakeLimit,
             maxMistakes,
-            setMaxMistakes
+            setMaxMistakes,
+            solutionCheckingEnabled,
+            toggleSolutionChecking
         }}>
             {children}
         </SettingsContext.Provider>

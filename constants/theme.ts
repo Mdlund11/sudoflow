@@ -13,6 +13,8 @@ export const COLORS = {
   highlight: '#E0F2FE', // Sky 100
   highlightStrong: '#BAE6FD', // Sky 200
   selection: '#7DD3FC', // Sky 300
+  hintTarget: '#F59E0B', // Amber 500
+  hintContributing: '#FEF3C7', // Amber 50
 };
 
 export const SPACING = {
@@ -65,6 +67,8 @@ export const Colors = {
     icon: COLORS.textSecondary,
     tabIconDefault: COLORS.textSecondary,
     tabIconSelected: COLORS.primary,
+    hintTarget: '#F59E0B',
+    hintContributing: '#FEF3C7',
   },
   dark: {
     text: '#F9FAFB', // Gray 50
@@ -83,6 +87,8 @@ export const Colors = {
     icon: '#9CA3AF',
     tabIconDefault: '#9CA3AF',
     tabIconSelected: '#38BDF8',
+    hintTarget: '#FBBF24',
+    hintContributing: '#451A03', // Amber 950
   },
 };
 
