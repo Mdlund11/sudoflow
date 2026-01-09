@@ -5,16 +5,19 @@ import React, { useCallback, useState } from 'react';
 import { Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Animated } from 'react-native';
 import { RADIUS, SHADOWS, SPACING } from '../constants/theme';
 import { useSettings } from '../context/SettingsContext';
 import { useStats } from '../context/StatsContext';
 import { useThemeColor } from '../hooks/use-theme-color';
+import { getNewlyCompletedRegions, getUnifiedWaveDelays } from '../utils/completionUtils';
 import { loadBoard, saveBoard, saveTimer } from '../utils/storage';
 import { checkSolution, findConflicts, generateSudoku, getHint, Hint } from '../utils/sudoku';
 import { formatTime } from '../utils/timeUtils';
 import Cell from './Cell';
+import FailureOverlay from './FailureOverlay';
 import Timer, { TimerRef } from './Timer';
-
+import VictoryOverlay from './VictoryOverlay';
 const SudokuBoard: React.FC = () => {
   const [board, setBoard] = useState<number[][]>([]);
   const [initialBoard, setInitialBoard] = useState<boolean[][]>([]);
@@ -31,17 +34,22 @@ const SudokuBoard: React.FC = () => {
   const router = useRouter();
 
   const { highlightEnabled, autoRemoveNotes, hideSolvedNumbers, completionAnimationsEnabled, streakTrackingEnabled, mistakeLimitEnabled, maxMistakes, solutionCheckingEnabled } = useSettings();
-  const { recordGameCompletion, recordGameFailure } = useStats();
+  const { recordGameCompletion, recordGameFailure, stats } = useStats();
   const [history, setHistory] = useState<{ board: number[][]; notes: number[][][] }[]>([]);
   const [hasShownEndGameAlert, setHasShownEndGameAlert] = useState<boolean>(false);
   const [isHintMode, setIsHintMode] = useState<boolean>(false);
   const [currentHint, setCurrentHint] = useState<Hint | null>(null);
+  const [showVictoryOverlay, setShowVictoryOverlay] = useState(false);
+  const [showFailureOverlay, setShowFailureOverlay] = useState(false);
+
+  const failureAnim = React.useRef(new Animated.Value(0)).current;
 
   // Animation state: simple trigger ID and map of delays for the wave
   const [animationState, setAnimationState] = useState<{
     id: number; // Unique trigger ID
     delays: Record<string, number>; // Map "row,col" -> delay in ms
-  }>({ id: 0, delays: {} });
+    type: 'flash' | 'blade-flip';
+  }>({ id: 0, delays: {}, type: 'flash' });
 
   const timerRef = React.useRef<TimerRef>(null);
 
@@ -61,8 +69,8 @@ const SudokuBoard: React.FC = () => {
   React.useEffect(() => {
     if (animationState.id !== 0) {
       const timeout = setTimeout(() => {
-        setAnimationState({ id: 0, delays: {} });
-      }, 500); // 500ms is enough for a 300ms animation
+        setAnimationState({ id: 0, delays: {}, type: 'flash' });
+      }, 700); // Increased slightly for blade-flip
       return () => clearTimeout(timeout);
     }
   }, [animationState.id]);
@@ -181,20 +189,14 @@ const SudokuBoard: React.FC = () => {
       if (completionAnimationsEnabled) {
         const completedRegions = getNewlyCompletedRegions(oldBoard, newBoard, row, col);
         if (completedRegions.length > 0) {
-          const delays: Record<string, number> = {};
-
-          completedRegions.forEach(region => {
-            region.cells.forEach((cell) => {
-              const key = `${cell.row},${cell.col}`;
-              delays[key] = 0; // Flash all at once
-            });
-          });
+          const delays = getUnifiedWaveDelays(row, col, completedRegions);
 
           // Trigger all animations at once with a new ID
           if (Object.keys(delays).length > 0) {
             setAnimationState({
               id: Date.now(),
-              delays
+              delays,
+              type: 'blade-flip'
             });
           }
         }
@@ -221,11 +223,13 @@ const SudokuBoard: React.FC = () => {
           recordGameFailure();
           if (!hasShownEndGameAlert) {
             setHasShownEndGameAlert(true);
-            Alert.alert(
-              'Keep it up!',
-              `You've made ${maxMistakes} mistakes. But don't worry, every expert was once a beginner. Start a new game and try again!`,
-              [{ text: 'OK' }]
-            );
+
+            // Trigger failure animation sequence
+            failureAnim.setValue(0);
+            // Trigger failure overlay after a short delay
+            setTimeout(() => {
+              setShowFailureOverlay(true);
+            }, 500);
           }
         }
       }
@@ -255,27 +259,20 @@ const SudokuBoard: React.FC = () => {
       setIsSolved(true);
       if (!hasShownEndGameAlert) {
         setHasShownEndGameAlert(true);
-        const finalTime = timerRef.current?.getTime() || 0;
+        setShowVictoryOverlay(true);
 
-        recordGameCompletion(difficulty).then(({ totalGames, currentStreak }) => {
-          const formattedTime = formatTime(finalTime);
-          let message = `Congratulations! You solved the puzzle in ${formattedTime}!\n\nTotal games completed: ${totalGames}`;
-          if (streakTrackingEnabled && currentStreak > 0) {
-            message += `\nWin streak: ${currentStreak} 🔥`;
-          }
-          Alert.alert('Victory!', message);
+        recordGameCompletion(difficulty);
 
-          // Update storage with hasShownEndGameAlert
-          saveBoard({
-            board: newBoard,
-            initialBoard,
-            difficulty,
-            notes: newNotes,
-            solution,
-            mistakes: newMistakes,
-            isFailed: newIsFailed,
-            hasShownEndGameAlert: true
-          });
+        // Update storage with hasShownEndGameAlert
+        saveBoard({
+          board: newBoard,
+          initialBoard,
+          difficulty,
+          notes: newNotes,
+          solution,
+          mistakes: newMistakes,
+          isFailed: newIsFailed,
+          hasShownEndGameAlert: true
         });
       }
     }
@@ -372,7 +369,17 @@ const SudokuBoard: React.FC = () => {
           <Timer ref={timerRef} key={gameId} isSolved={isSolved} isFailed={isFailed} />
         </View>
 
-        <View style={[styles.board, { width: boardSize + 4, height: boardSize + 4, borderColor: borderDarkColor, backgroundColor: surfaceColor }]}>
+        <Animated.View
+          style={[
+            styles.board,
+            {
+              width: boardSize + 4,
+              height: boardSize + 4,
+              borderColor: borderDarkColor,
+              backgroundColor: surfaceColor,
+            }
+          ]}
+        >
           {board.flat().map((cell, index) => {
             const rowIndex = Math.floor(index / 9);
             const colIndex = index % 9;
@@ -424,64 +431,69 @@ const SudokuBoard: React.FC = () => {
                 isContributingHint={isContributingHint}
                 animationTrigger={animationDelay !== undefined ? animationState.id : undefined}
                 animationDelay={animationDelay}
+                animationType={animationState.type}
               />
             );
           })}
-        </View>
-
-        {isHintMode && currentHint && (
-          <View style={[styles.hintContainer, { backgroundColor: surfaceColor, borderColor: primaryColor }]}>
-            <View style={styles.hintHeader}>
-              <MaterialCommunityIcons name="lightbulb-outline" size={20} color={primaryColor} />
-              <Text style={[styles.hintTechnique, { color: primaryColor }]}>{currentHint.technique}</Text>
-            </View>
-            <Text style={[styles.hintExplanation, { color: textColor }]}>{currentHint.explanation}</Text>
-          </View>
-        )}
+        </Animated.View>
 
         <View style={styles.controlsContainer}>
           <View style={styles.toolsRow}>
-            <TouchableOpacity
-              style={[styles.toolButton, (isFailed || isSolved) && { opacity: 0.5 }]}
-              onPress={toggleNoteMode}
-              disabled={isFailed || isSolved}
-            >
-              <View style={styles.iconWrapper}>
-                <MaterialCommunityIcons
-                  name={isNoteMode ? "pencil" : "pencil-outline"}
-                  size={28}
-                  color={isNoteMode ? primaryColor : textColor}
-                />
-                <View style={[styles.badge, { backgroundColor: isNoteMode ? primaryColor : textColor, borderColor: surfaceColor }]}>
-                  <Text style={[styles.badgeText, { color: surfaceColor }]}>{isNoteMode ? 'ON' : 'OFF'}</Text>
+            {isHintMode && currentHint ? (
+              <View style={[styles.inlineHintContainer, { backgroundColor: surfaceColor, borderColor: primaryColor }]}>
+                <View style={styles.hintHeader}>
+                  <MaterialCommunityIcons name="lightbulb-outline" size={20} color={primaryColor} />
+                  <Text style={[styles.hintTechnique, { color: primaryColor }]}>{currentHint.technique}</Text>
+                </View>
+                <View style={styles.hintTextContainer}>
+                  <Text style={[styles.hintExplanation, { color: textColor }]}>{currentHint.explanation}</Text>
                 </View>
               </View>
-              <Text style={[styles.toolButtonText, { color: isNoteMode ? primaryColor : textColor }]}>
-                Notes
-              </Text>
-            </TouchableOpacity>
+            ) : (
+              <>
+                <TouchableOpacity
+                  style={[styles.toolButton, (isFailed || isSolved) && { opacity: 0.5 }]}
+                  onPress={toggleNoteMode}
+                  disabled={isFailed || isSolved}
+                >
+                  <View style={styles.iconWrapper}>
+                    <MaterialCommunityIcons
+                      name={isNoteMode ? "pencil" : "pencil-outline"}
+                      size={28}
+                      color={isNoteMode ? primaryColor : textColor}
+                    />
+                    <View style={[styles.badge, { backgroundColor: isNoteMode ? primaryColor : textColor, borderColor: surfaceColor }]}>
+                      <Text style={[styles.badgeText, { color: surfaceColor }]}>{isNoteMode ? 'ON' : 'OFF'}</Text>
+                    </View>
+                  </View>
+                  <Text style={[styles.toolButtonText, { color: isNoteMode ? primaryColor : textColor }]}>
+                    Notes
+                  </Text>
+                </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.toolButton, (history.length === 0 || isFailed || isSolved) && { opacity: 0.5 }]}
-              onPress={handleUndo}
-              disabled={history.length === 0 || isFailed || isSolved}
-            >
-              <View style={styles.iconWrapper}>
-                <MaterialCommunityIcons name="undo" size={28} color={textColor} />
-              </View>
-              <Text style={[styles.toolButtonText, { color: textColor }]}>Undo</Text>
-            </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.toolButton, (history.length === 0 || isFailed || isSolved) && { opacity: 0.5 }]}
+                  onPress={handleUndo}
+                  disabled={history.length === 0 || isFailed || isSolved}
+                >
+                  <View style={styles.iconWrapper}>
+                    <MaterialCommunityIcons name="undo" size={28} color={textColor} />
+                  </View>
+                  <Text style={[styles.toolButtonText, { color: textColor }]}>Undo</Text>
+                </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.toolButton, (isFailed || isSolved) && { opacity: 0.5 }]}
-              onPress={handleClearPress}
-              disabled={isFailed || isSolved}
-            >
-              <View style={styles.iconWrapper}>
-                <MaterialCommunityIcons name="eraser" size={28} color={textColor} />
-              </View>
-              <Text style={[styles.toolButtonText, { color: textColor }]}>Clear</Text>
-            </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.toolButton, (isFailed || isSolved) && { opacity: 0.5 }]}
+                  onPress={handleClearPress}
+                  disabled={isFailed || isSolved}
+                >
+                  <View style={styles.iconWrapper}>
+                    <MaterialCommunityIcons name="eraser" size={28} color={textColor} />
+                  </View>
+                  <Text style={[styles.toolButtonText, { color: textColor }]}>Clear</Text>
+                </TouchableOpacity>
+              </>
+            )}
 
             <TouchableOpacity
               style={[styles.toolButton, (isFailed || isSolved) && { opacity: 0.5 }]}
@@ -540,6 +552,32 @@ const SudokuBoard: React.FC = () => {
           </View>
         </View>
       </ScrollView>
+
+      {showVictoryOverlay && (
+        <VictoryOverlay
+          time={formatTime(timerRef.current?.getTime() || 0)}
+          difficulty={difficulty}
+          streak={stats.currentStreak}
+          onNewGame={() => {
+            setShowVictoryOverlay(false);
+            router.push('/new-game');
+          }}
+          onDismiss={() => setShowVictoryOverlay(false)}
+        />
+      )}
+
+      {showFailureOverlay && (
+        <FailureOverlay
+          onNewGame={() => {
+            setShowFailureOverlay(false);
+            failureAnim.setValue(0);
+            router.push('/new-game');
+          }}
+          onDismiss={() => {
+            setShowFailureOverlay(false);
+          }}
+        />
+      )}
     </View>
   );
 };
@@ -617,14 +655,30 @@ const styles = StyleSheet.create({
   toolsRow: {
     flexDirection: 'row',
     marginBottom: SPACING.l,
-    justifyContent: 'center',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     width: '100%',
-    gap: SPACING.xl,
+    maxWidth: '90%',
+    // Fixed height removed to allow expansion
+    minHeight: 60,
+  },
+  inlineHintContainer: {
+    flex: 1,
+    marginRight: SPACING.m,
+    padding: SPACING.s,
+    borderRadius: RADIUS.m,
+    borderWidth: 1,
+    justifyContent: 'center',
+    // Fixed height removed
+  },
+  hintTextContainer: {
+    // No specific constraints, let it flow
   },
   toolButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: SPACING.m,
+    paddingHorizontal: SPACING.s,
+    minWidth: 60,
   },
   iconWrapper: {
     position: 'relative',
@@ -671,6 +725,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  // Kept for type safety but likely unused now
   hintContainer: {
     width: '90%',
     marginTop: SPACING.m,
@@ -683,54 +738,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.s,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   hintTechnique: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: 'bold',
     textTransform: 'uppercase',
   },
   hintExplanation: {
-    fontSize: 14,
+    fontSize: 14, // Bumped up slightly for readability since we have space now
     lineHeight: 20,
   },
 });
 
-const getNewlyCompletedRegions = (oldBoard: number[][], newBoard: number[][], r: number, c: number) => {
-  const regions: { type: 'row' | 'col' | 'box'; index: number; cells: { row: number; col: number }[] }[] = [];
-
-  // Check row
-  if (oldBoard[r].some(val => val === 0) && newBoard[r].every(val => val !== 0)) {
-    regions.push({ type: 'row', index: r, cells: Array.from({ length: 9 }, (_, i) => ({ row: r, col: i })) });
-  }
-
-  // Check col
-  if (oldBoard.some(row => row[c] === 0) && newBoard.every(row => row[c] !== 0)) {
-    regions.push({ type: 'col', index: c, cells: Array.from({ length: 9 }, (_, i) => ({ row: i, col: c })) });
-  }
-
-  // Check box
-  const boxRow = Math.floor(r / 3);
-  const boxCol = Math.floor(c / 3);
-  const boxCells: { row: number; col: number }[] = [];
-  let boxWasCompleteBefore = true;
-  let boxIsCompleteNow = true;
-
-  for (let i = 0; i < 3; i++) {
-    for (let j = 0; j < 3; j++) {
-      const currR = boxRow * 3 + i;
-      const currC = boxCol * 3 + j;
-      boxCells.push({ row: currR, col: currC });
-      if (oldBoard[currR][currC] === 0) boxWasCompleteBefore = false;
-      if (newBoard[currR][currC] === 0) boxIsCompleteNow = false;
-    }
-  }
-
-  if (!boxWasCompleteBefore && boxIsCompleteNow) {
-    regions.push({ type: 'box', index: boxRow * 3 + boxCol, cells: boxCells });
-  }
-
-  return regions;
-};
 
 export default SudokuBoard;

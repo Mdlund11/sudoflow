@@ -99,4 +99,8 @@ export const ANIMATION_TIMINGS = {
   CELL_CONTRACT_DURATION: 150,
   /** Total duration of one cell's animation loop (ms). Used for cleanup if needed. */
   TOTAL_CELL_DURATION: 350,
+  /** Duration of the 3D blade-flip animation (ms). */
+  BLADE_FLIP_DURATION: 500,
+  /** Stagger time between cells in a wave (ms). */
+  STAGGER_AMOUNT: 30,
 };

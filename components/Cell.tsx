@@ -19,6 +19,7 @@ interface CellProps {
   isHighlightNumber: boolean;
   animationTrigger?: number;
   animationDelay?: number;
+  animationType?: 'flash' | 'blade-flip';
   isTargetHint?: boolean;
   isContributingHint?: boolean;
 }
@@ -39,11 +40,13 @@ const Cell: React.FC<CellProps> = ({
   isHighlightNumber,
   animationTrigger,
   animationDelay,
+  animationType = 'flash',
   isTargetHint,
   isContributingHint,
 }) => {
   // Single animation value to keep everything in sync (0 to 1)
   const animProgress = useRef(new Animated.Value(0)).current;
+  const rotateAnim = useRef(new Animated.Value(0)).current;
 
   const textColor = useThemeColor({}, 'text');
   const textSecondaryColor = useThemeColor({}, 'textSecondary');
@@ -62,22 +65,42 @@ const Cell: React.FC<CellProps> = ({
     if (animationTrigger && animationDelay !== undefined) {
       // 1. Reset immediately
       animProgress.setValue(0);
+      rotateAnim.setValue(0);
 
       const expandDuration = ANIMATION_TIMINGS?.CELL_EXPAND_DURATION || 100;
       const contractDuration = ANIMATION_TIMINGS?.CELL_CONTRACT_DURATION || 100;
       const totalDuration = expandDuration + contractDuration;
+      const bladeFlipDuration = ANIMATION_TIMINGS?.BLADE_FLIP_DURATION || 500;
 
       // 2. Start the sequence
-      const animation = Animated.sequence([
+      const animations = [
         Animated.delay(animationDelay || 0),
-        Animated.timing(animProgress, {
-          toValue: 1,
-          duration: totalDuration,
-          useNativeDriver: false, // Color and shadow animations need JS driver
-        })
-      ]);
+      ];
 
-      animation.start();
+      if (animationType === 'blade-flip') {
+        animations.push(
+          Animated.timing(rotateAnim, {
+            toValue: 1,
+            duration: bladeFlipDuration,
+            useNativeDriver: true,
+          })
+        );
+      } else {
+        animations.push(
+          Animated.timing(animProgress, {
+            toValue: 1,
+            duration: totalDuration,
+            useNativeDriver: false, // Color and shadow animations need JS driver
+          })
+        );
+      }
+
+      const animation = Animated.sequence(animations);
+      animation.start(() => {
+        // Reset values after animation to prevent squished state
+        rotateAnim.setValue(0);
+        animProgress.setValue(0);
+      });
 
       return () => {
         animation.stop();
@@ -145,7 +168,22 @@ const Cell: React.FC<CellProps> = ({
           ]}
         />
 
-        <View style={styles.cellBackground}>
+        <Animated.View
+          style={[
+            styles.cellBackground,
+            animationType === 'blade-flip' && {
+              transform: [
+                { perspective: 1000 },
+                {
+                  rotateY: rotateAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ['0deg', '360deg'],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
           {value !== 0 ? (
             <Text
               style={[
@@ -180,7 +218,7 @@ const Cell: React.FC<CellProps> = ({
               ))}
             </View>
           )}
-        </View>
+        </Animated.View>
       </TouchableOpacity>
     </View>
   );

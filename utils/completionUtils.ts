@@ -1,6 +1,6 @@
 // Utilities for detecting completed regions in the Sudoku board
 
-export type RegionType = 'row' | 'column' | 'block';
+export type RegionType = 'row' | 'column' | 'block' | 'number';
 
 export interface CompletedRegion {
     type: RegionType;
@@ -98,6 +98,34 @@ const getBlockCells = (blockRow: number, blockCol: number): { row: number; col: 
 };
 
 /**
+ * Check if all 9 instances of a number are placed on the board.
+ */
+export const isNumberComplete = (board: number[][], num: number): boolean => {
+    let count = 0;
+    for (let r = 0; r < 9; r++) {
+        for (let c = 0; c < 9; c++) {
+            if (board[r][c] === num) count++;
+        }
+    }
+    return count === 9;
+};
+
+/**
+ * Get all cells containing a specific number.
+ */
+export const getNumberCells = (board: number[][], num: number): { row: number; col: number }[] => {
+    const cells = [];
+    for (let r = 0; r < 9; r++) {
+        for (let c = 0; c < 9; c++) {
+            if (board[r][c] === num) {
+                cells.push({ row: r, col: c });
+            }
+        }
+    }
+    return cells;
+};
+
+/**
  * Detect newly completed regions after placing a cell
  * Only returns regions that are now complete (weren't complete before)
  */
@@ -108,6 +136,7 @@ export const getNewlyCompletedRegions = (
     col: number
 ): CompletedRegion[] => {
     const completedRegions: CompletedRegion[] = [];
+    const placedValue = newBoard[row][col];
 
     // Check row
     if (isRowComplete(newBoard, row) && !isRowComplete(oldBoard, row)) {
@@ -138,5 +167,42 @@ export const getNewlyCompletedRegions = (
         });
     }
 
+    // Check number completion
+    if (placedValue !== 0 && isNumberComplete(newBoard, placedValue) && !isNumberComplete(oldBoard, placedValue)) {
+        completedRegions.push({
+            type: 'number',
+            index: placedValue,
+            cells: getNumberCells(newBoard, placedValue),
+        });
+    }
+
     return completedRegions;
+};
+
+/**
+ * Calculate staggered delays for a unified wave animation starting from the move cell.
+ */
+export const getUnifiedWaveDelays = (
+    moveRow: number,
+    moveCol: number,
+    completedRegions: CompletedRegion[]
+): Record<string, number> => {
+    const delays: Record<string, number> = {};
+    const STAGGER_AMOUNT = 30; // Matches ANIMATION_TIMINGS.STAGGER_AMOUNT
+
+    // 1. Build flat set of unique cells involved across all regions
+    const uniqueCells = new Map<string, { row: number; col: number }>();
+    completedRegions.forEach(region => {
+        region.cells.forEach(cell => {
+            uniqueCells.set(`${cell.row},${cell.col}`, cell);
+        });
+    });
+
+    // 2. Calculate Manhattan distance from the "Move Cell" and map delays
+    uniqueCells.forEach((cell, key) => {
+        const distance = Math.abs(moveRow - cell.row) + Math.abs(moveCol - cell.col);
+        delays[key] = distance * STAGGER_AMOUNT;
+    });
+
+    return delays;
 };
