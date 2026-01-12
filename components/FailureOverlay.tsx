@@ -19,11 +19,39 @@ interface FailureOverlayProps {
 
 const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 
+const FAILURE_MESSAGES = [
+    "Don't give up! Every mistake is a lesson.",
+    "Every giant was once a beginner. Try again.",
+    "Clarity comes with practice. Shall we go again?",
+    "A minor setback for a major comeback.",
+    "The logic is there. Just take a deep breath.",
+    "Progress isn't linear. Keep moving forward.",
+    "Resilience is the key to mastery.",
+    "Perfection is a journey, not a destination.",
+    "You're getting closer with every try.",
+    "Dust yourself off. The next grid is waiting.",
+    "Even the sharpest mind needs a second chance.",
+    "Logic puzzles take patience. You've got this.",
+    "Mistake made, lesson learned. Ready for round two?",
+    "Pause, reflect, and jump back in.",
+    "Your focus is improving. Try another one.",
+    "Success is built on persistence.",
+    "One more time? The solution is out there.",
+    "Keep going. The rhythm will find you.",
+    "Growth happens in the challenge.",
+    "Re-center and reset. You're almost there.",
+];
+
 const FailureOverlay: React.FC<FailureOverlayProps> = ({ onNewGame, onDismiss }) => {
     const primaryColor = useThemeColor({}, 'primary');
     const surfaceColor = useThemeColor({}, 'surface');
     const textColor = useThemeColor({}, 'text');
     const errorColor = useThemeColor({}, 'error');
+
+    // Select random message once on mount
+    const randomMessage = React.useMemo(() => {
+        return FAILURE_MESSAGES[Math.floor(Math.random() * FAILURE_MESSAGES.length)];
+    }, []);
 
     // Shared Values
     const blurOpacity = useSharedValue(0);
@@ -88,7 +116,7 @@ const FailureOverlay: React.FC<FailureOverlayProps> = ({ onNewGame, onDismiss })
 
                     <Animated.View style={[styles.content, contentStyle]}>
                         <Text style={[styles.subtitle, { color: textColor }]}>
-                            Don't give up! Every mistake is a lesson.
+                            {randomMessage}
                         </Text>
 
                         <View style={styles.divider} />

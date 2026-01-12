@@ -1,0 +1,25 @@
+{
+  "name": "Feature Loop: Spec-Build-Test",
+  "trigger": "manual",
+  "steps": [
+    {
+      "action": "generate_artifact",
+      "type": "spec",
+      "instruction": "Expand the partial user request into a detailed technical spec."
+    },
+    {
+      "action": "implement_code",
+      "instruction": "Implement the feature based on the spec and the standards in .agent/rules/testing-standards.md."
+    },
+    {
+      "action": "run_terminal",
+      "command": "npm test -- --watchAll=false",
+      "retry_on_failure": true,
+      "max_retries": 3
+    },
+    {
+      "action": "summarize",
+      "instruction": "Provide a summary of the implemented feature and the test results."
+    }
+  ]
+}

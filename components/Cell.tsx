@@ -104,6 +104,9 @@ const Cell: React.FC<CellProps> = ({
 
       return () => {
         animation.stop();
+        // Force reset even on stop to prevent sticky squished states
+        rotateAnim.setValue(0);
+        animProgress.setValue(0);
       };
     }
   }, [animationTrigger]);
