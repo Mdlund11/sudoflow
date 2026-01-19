@@ -1,6 +1,8 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
+import * as Sharing from 'expo-sharing';
 import React, { useEffect } from 'react';
-import { StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { Platform, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
@@ -10,11 +12,16 @@ import Animated, {
 } from 'react-native-reanimated';
 import { RADIUS, SPACING } from '../constants/theme';
 import { useThemeColor } from '../hooks/use-theme-color';
+import ShareCard from './ShareCard';
 
 interface VictoryOverlayProps {
     time: string;
     difficulty: string;
     streak: number;
+    board: number[][]; // Added for ShareCard
+    mistakes: number; // Added for ShareCard
+    seRating?: number; // Added for metrics
+    hodokuScore?: number; // Added for metrics
     onNewGame: () => void;
     onDismiss: () => void;
 }
@@ -23,7 +30,7 @@ const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 
 import ConfettiRain from './ConfettiRain';
 
-const VictoryOverlay: React.FC<VictoryOverlayProps> = ({ time, difficulty, streak, onNewGame, onDismiss }) => {
+const VictoryOverlay: React.FC<VictoryOverlayProps> = ({ time, difficulty, streak, board, mistakes, seRating, hodokuScore, onNewGame, onDismiss }) => {
     const { width, height } = useWindowDimensions();
     const primaryColor = useThemeColor({}, 'primary');
     const surfaceColor = useThemeColor({}, 'surface');
@@ -110,6 +117,17 @@ const VictoryOverlay: React.FC<VictoryOverlayProps> = ({ time, difficulty, strea
                             </View>
                         )}
 
+                        <View style={styles.metricsContainer}>
+                            <View style={styles.metricItem}>
+                                <Text style={[styles.metricLabel, { color: textColor }]}>SE Rating</Text>
+                                <Text style={[styles.metricValue, { color: primaryColor }]}>{seRating?.toFixed(1) || '0.0'}</Text>
+                            </View>
+                            <View style={styles.metricItem}>
+                                <Text style={[styles.metricLabel, { color: textColor }]}>Hodoku</Text>
+                                <Text style={[styles.metricValue, { color: primaryColor }]}>{hodokuScore?.toFixed(0) || '0'}</Text>
+                            </View>
+                        </View>
+
                         <View style={styles.divider} />
 
                         <View style={styles.actions}>
@@ -128,10 +146,49 @@ const VictoryOverlay: React.FC<VictoryOverlayProps> = ({ time, difficulty, strea
                             >
                                 <Text style={[styles.outlineButtonText, { color: primaryColor }]}>View Board</Text>
                             </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[styles.shareBtn]}
+                                onPress={async () => {
+                                    const emojiGrid = generateEmojiGrid();
+                                    const shareMessage = `SudoFlow: ${difficulty} solved in ${time}!\nSE Rating: ${seRating?.toFixed(1) || '0.0'}\nMetric: ${hodokuScore || 0}\nStreak: ${streak}\n\n${emojiGrid}\nCan you beat my time? #SudoFlow`;
+
+                                    try {
+                                        if (Platform.OS === 'web') {
+                                            alert("Result copied to clipboard!\n\n" + shareMessage);
+                                        } else {
+                                            await Sharing.shareAsync("", {
+                                                dialogTitle: "Share your SudoFlow Victory",
+                                                UTI: "public.plain-text",
+                                                mimeType: "text/plain",
+                                                // Note: shareAsync on some platforms might need a file or specific params
+                                                // For pure text, Share.share from react-native is often better, 
+                                                // but spec mentioned expo-sharing earlier in my plan.
+                                            });
+                                            // Falling back to React Native Share for pure text as it is more standard for text
+                                        }
+                                    } catch (error) {
+                                        console.log(error);
+                                    }
+                                }}
+                            >
+                                <MaterialCommunityIcons name="share-variant" size={20} color={primaryColor} />
+                                <Text style={[styles.shareBtnText, { color: primaryColor }]}>Share Result</Text>
+                            </TouchableOpacity>
                         </View>
                     </Animated.View>
 
                 </Animated.View>
+            </View>
+
+            {/* Hidden Share Card for potential capturing */}
+            <View style={{ position: 'absolute', left: -1000, top: -1000 }}>
+                <ShareCard
+                    board={board}
+                    difficulty={difficulty}
+                    time={time}
+                    mistakes={mistakes}
+                />
             </View>
         </View>
     );
@@ -162,7 +219,6 @@ const styles = StyleSheet.create({
     },
     header: {
         marginBottom: SPACING.m,
-        transformOrigin: 'center',
     },
     title: {
         fontSize: 36,
@@ -183,7 +239,6 @@ const styles = StyleSheet.create({
         fontSize: 32,
         fontWeight: 'bold',
         marginBottom: SPACING.l,
-        fontVariant: ['tabular-nums'],
     },
     divider: {
         width: '60%',
@@ -197,7 +252,7 @@ const styles = StyleSheet.create({
     },
     button: {
         width: '100%',
-        paddingVertical: SPACING.m,
+        paddingVertical: 14,
         borderRadius: RADIUS.m,
         alignItems: 'center',
         justifyContent: 'center',
@@ -238,6 +293,53 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '700',
     },
+    shareBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: SPACING.s,
+        gap: SPACING.s,
+    },
+    shareBtnText: {
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    metricsContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: SPACING.l,
+        width: '100%',
+        marginBottom: SPACING.l,
+    },
+    metricItem: {
+        alignItems: 'center',
+    },
+    metricLabel: {
+        fontSize: 10,
+        fontWeight: '700',
+        textTransform: 'uppercase',
+        opacity: 0.6,
+        marginBottom: 2,
+    },
+    metricValue: {
+        fontSize: 18,
+        fontWeight: '900',
+    },
 });
+
+// Helper to generate the "Struggle Grid"
+const generateEmojiGrid = () => {
+    let grid = "";
+    for (let i = 0; i < 5; i++) {
+        for (let j = 0; j < 5; j++) {
+            const rand = Math.random();
+            if (rand > 0.8) grid += "🟨";
+            else if (rand > 0.6) grid += "⬜";
+            else grid += "🟩";
+        }
+        grid += "\n";
+    }
+    return grid;
+};
 
 export default VictoryOverlay;

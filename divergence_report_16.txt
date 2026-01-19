@@ -1,0 +1,33 @@
+Comparing Puzzle 16
+Engine Rating: 5.5 | Solver Rating: 5.5
+OK   [0] E: Hidden Single (1.2)                 | A: Hidden Single (Block) (1.2)
+OK   [1] E: Hidden Single (1.2)                 | A: Hidden Single (Block) (1.2)
+OK   [2] E: Pointing (2.6)                      | A: Pointing Pair (2.6)
+OK   [3] E: Pointing (2.6)                      | A: Pointing Pair (2.6)
+OK   [4] E: Pointing (2.6)                      | A: Pointing Pair (2.6)
+OK   [5] E: Pointing (2.6)                      | A: Pointing Pair (2.6)
+OK   [6] E: Pointing (2.6)                      | A: Pointing Pair (2.6)
+OK   [7] E: Pointing (2.6)                      | A: Pointing Pair (2.6)
+OK   [8] E: Hidden Pair (3.4)                   | A: Hidden Pair (3.4)
+OK   [9] E: Pointing (2.6)                      | A: Pointing Pair (2.6)
+OK   [10] E: Hidden Triplet (4)                  | A: Hidden Triplet (4)
+OK   [11] E: Direct Hidden Pair (2)              | A: Direct Hidden Pair (2)
+OK   [12] E: Hidden Single (1.2)                 | A: Hidden Single (Line) (1.5)
+DIFF [13] E: Direct Hidden Pair (2)              | A: Hidden Single (Block) (1.2)
+NAME [14] E: Naked Single (2.3)                  | A: Direct Hidden Pair (2)
+OK   [15] E: Hidden Single (1.2)                 | A: Hidden Single (Line) (1.5)
+DIFF [16] E: Hidden Single (1.2)                 | A: Naked Single (2.3)
+DIFF [17] E: Pointing (2.6)                      | A: Hidden Single (Block) (1.2)
+DIFF [18] E: Pointing (2.6)                      | A: Hidden Single (Block) (1.2)
+OK   [19] E: Pointing (2.6)                      | A: Pointing Pair (2.6)
+DIFF [20] E: Hidden Pair (3.4)                   | A: Skyscraper (4)
+DIFF [21] E: Skyscraper 011 (4)                  | A: Hidden Pair (3.4)
+DIFF [22] E: Hidden Pair (3.4)                   | A: Unique Rectangle (Type 4) (4.5)
+DIFF [23] E: Unique Rectangle type 4 (4.5)       | A: Pointing Pair (2.6)
+DIFF [24] E: Pointing (2.6)                      | A: XY-Wing (4.2)
+DIFF [25] E: XY-Wing (4.2)                       | A: WXYZ-Wing (5.5)
+DIFF [26] E: WXYZ-Wing 126 (5.5)                 | A: Hidden Single (Block) (1.2)
+
+>>> HUGE DIVERGENCE AT STEP 26 <<<
+Expected: WXYZ-Wing 126 The four cells r7c1 , r7c5 , r7c7 and r4c7 form an WXYZ-Wing : The three cells r7c1 , r7c5 , and r7c7 form an almost locked set linked to the bivalue cell r4c7 through the value 7 . If the value 8 was eliminated from all 4 cells of the Wing then the remaining value 7 in cell r4c7 would force the remaining 3 cells to have only 2 possible candidates to fill them. That is impossible! Other occurrences of the value 8 can therefore be removed from any cells sharing a row, column or block with all Wing cells containing the value 8 . The largest cell of the wing has 2 candidates and all 4 cells of the WXYZ-Wing pattern have a total of 6 candidates.
+Actual:   Hidden Single (Block): In Block 2, the number 7 can only fit in cell R3C6.

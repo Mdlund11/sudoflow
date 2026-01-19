@@ -7,7 +7,8 @@ interface CellProps {
   row: number;
   col: number;
   value: number;
-  notes: number[];
+  centerNotes: number[];
+  cornerNotes: number[];
   isSelected: boolean;
   onPress: () => void;
   size: number;
@@ -28,7 +29,8 @@ const Cell: React.FC<CellProps> = ({
   row,
   col,
   value,
-  notes,
+  centerNotes,
+  cornerNotes,
   isSelected,
   onPress,
   size,
@@ -203,22 +205,51 @@ const Cell: React.FC<CellProps> = ({
             </Text>
           ) : (
             <View style={styles.notesContainer}>
-              {[0, 1, 2].map((r) => (
-                <View key={r} style={styles.noteRow}>
-                  {[0, 1, 2].map((c) => {
-                    const num = r * 3 + c + 1;
-                    return (
-                      <View key={c} style={styles.noteCell}>
-                        {notes && notes.includes(num) && (
-                          <Text style={[styles.noteText, { fontSize: size * 0.2, color: textSecondaryColor }]}>
-                            {num}
-                          </Text>
-                        )}
-                      </View>
-                    );
-                  })}
+              {/* Center Notes */}
+              <View style={styles.centerNotesGrid}>
+                {[0, 1, 2].map((r) => (
+                  <View key={r} style={styles.noteRow}>
+                    {[0, 1, 2].map((c) => {
+                      const num = r * 3 + c + 1;
+                      return (
+                        <View key={c} style={styles.noteCell}>
+                          {centerNotes && centerNotes.includes(num) && (
+                            <Text style={[styles.noteText, { fontSize: size * 0.2, color: textSecondaryColor }]}>
+                              {num}
+                            </Text>
+                          )}
+                        </View>
+                      );
+                    })}
+                  </View>
+                ))}
+              </View>
+
+              {/* Corner Notes */}
+              <View style={StyleSheet.absoluteFill}>
+                <View style={styles.cornerNotesContainer}>
+                  {cornerNotes && cornerNotes.map((num, idx) => (
+                    <Text
+                      key={num}
+                      style={[
+                        styles.cornerNoteText,
+                        {
+                          fontSize: size * 0.18,
+                          color: textSecondaryColor,
+                          position: 'absolute',
+                          ...(idx === 0 && { top: 2, left: 2 }),
+                          ...(idx === 1 && { top: 2, right: 2 }),
+                          ...(idx === 2 && { bottom: 2, left: 2 }),
+                          ...(idx === 3 && { bottom: 2, right: 2 }),
+                          ...(idx >= 4 && { top: '50%', left: '50%', transform: [{ translateX: -10 }, { translateY: -10 }] }) // Fallback
+                        }
+                      ]}
+                    >
+                      {num}
+                    </Text>
+                  ))}
                 </View>
-              ))}
+              </View>
             </View>
           )}
         </Animated.View>
@@ -246,9 +277,11 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     height: '100%',
-    flexDirection: 'column',
-    justifyContent: 'space-between',
+  },
+  centerNotesGrid: {
+    flex: 1,
     padding: 2,
+    justifyContent: 'space-between',
   },
   noteRow: {
     flex: 1,
@@ -263,6 +296,13 @@ const styles = StyleSheet.create({
   },
   noteText: {
     fontWeight: '600',
+  },
+  cornerNotesContainer: {
+    flex: 1,
+    position: 'relative',
+  },
+  cornerNoteText: {
+    fontWeight: '700',
   },
 });
 
